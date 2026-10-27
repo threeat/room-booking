@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>강의실 예약</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #fff; --text: #1d2330; --muted: #6b7280; --line: #dde1e7;
+    --accent: #2f5bd3; --ok: #15803d; --ok-bg: #dcfce7; --bad: #b91c1c; --bad-bg: #fee2e2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b; --card: #1c2029; --text: #e7eaf0; --muted: #9aa3b2; --line: #2d3340;
+      --accent: #7c9cff; --ok: #4ade80; --ok-bg: #12321f; --bad: #f87171; --bad-bg: #3a1616;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 20px; font-size: .9rem; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+  h2 { font-size: 1.1rem; margin: 0 0 12px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; color: var(--muted); }
+  input { font: inherit; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--bg); color: var(--text); min-width: 0; }
+  button { font: inherit; font-weight: 600; margin-top: 12px; padding: 10px 18px; border: 0; border-radius: 8px;
+    background: var(--accent); color: #fff; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: wait; }
+  .result { margin-top: 12px; padding: 14px; border-radius: 10px; font-size: 1.6rem; font-weight: 800; text-align: center; display: none; }
+  .result.ok { display: block; background: var(--ok-bg); color: var(--ok); }
+  .result.bad { display: block; background: var(--bad-bg); color: var(--bad); }
+  .result small { display: block; font-size: .85rem; font-weight: 500; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: .85rem; }
+  .empty { color: var(--muted); margin-top: 12px; }
+  #status { padding: 10px 14px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); margin-bottom: 16px; font-size: .9rem; }
+  .hint { color: var(--muted); font-size: .8rem; margin-top: 8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>강의실 예약</h1>
+  <p class="sub">예약 규칙은 모두 <code>solution.py</code>의 <code>RoomBooking</code>이 판단합니다. 강의실 A101 · A102 · B201, 요일 월~금, 9~21시.</p>
+  <div id="status">solution.py 불러오는 중… (처음엔 10초쯤 걸릴 수 있어요)</div>
+
+  <section class="card">
+    <h2>예약하기</h2>
+    <form id="bookForm">
+      <div class="grid">
+        <label>강의실<input name="room" list="rooms" value="A101" required></label>
+        <label>요일<input name="day" list="days" value="월" required></label>
+        <label>시작(시)<input name="start" inputmode="decimal" value="10" required></label>
+        <label>끝(시)<input name="end" inputmode="decimal" value="12" required></label>
+        <label>이름<input name="name" required></label>
+      </div>
+      <button type="submit" disabled>예약</button>
+      <div class="result" id="bookResult"></div>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>취소하기</h2>
+    <form id="cancelForm">
+      <div class="grid">
+        <label>강의실<input name="room" list="rooms" value="A101" required></label>
+        <label>요일<input name="day" list="days" value="월" required></label>
+        <label>시작(시)<input name="start" inputmode="decimal" value="10" required></label>
+        <label>이름<input name="name" required></label>
+      </div>
+      <button type="submit" disabled>취소</button>
+      <div class="result" id="cancelResult"></div>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>시간표</h2>
+    <form id="scheduleForm">
+      <div class="grid">
+        <label>강의실<input name="room" list="rooms" value="A101" required></label>
+        <label>요일<input name="day" list="days" value="월" required></label>
+      </div>
+      <button type="submit" disabled>시간표 보기</button>
+      <div id="scheduleOut"></div>
+    </form>
+    <p class="hint">예약 기록은 이 페이지를 연 동안 유지됩니다. 새로고침하면 처음 상태(예약 없음)로 돌아갑니다.</p>
+  </section>
+
+  <datalist id="rooms"><option value="A101"><option value="A102"><option value="B201"></datalist>
+  <datalist id="days"><option value="월"><option value="화"><option value="수"><option value="목"><option value="금"></datalist>
+</main>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script>
+// 화면 입력을 solution.py에 넘기는 연결 코드만 있습니다. 예약 규칙은 없습니다.
+const GLUE = `
+import json, re
+from solution import RoomBooking
+rb = RoomBooking()
+
+def _num(s):
+    # 입력 글자를 숫자로만 바꿔서 그대로 넘김 ("10" -> 10, "10.5" -> 10.5, 그 외는 글자 그대로)
+    s = s.strip()
+    if re.fullmatch(r"[+-]?\\d+", s):
+        return int(s)
+    try:
+        return float(s)
+    except ValueError:
+        return s
+
+def api(op, args_json):
+    a = json.loads(args_json)
+    if op == "book":
+        return json.dumps(rb.book(a["room"], a["day"], _num(a["start"]), _num(a["end"]), a["name"]))
+    if op == "cancel":
+        return json.dumps(rb.cancel(a["room"], a["day"], _num(a["start"]), a["name"]))
+    if op == "schedule":
+        return json.dumps(rb.get_schedule(a["room"], a["day"]), ensure_ascii=False)
+`;
+
+let api = null;
+const status = document.getElementById("status");
+
+async function init() {
+  try {
+    const pyodide = await loadPyodide();
+    const src = await (await fetch("solution.py?v=" + Date.now(), { cache: "no-store" })).text();
+    pyodide.FS.writeFile("solution.py", src);
+    pyodide.runPython(GLUE);
+    api = pyodide.globals.get("api");
+    status.textContent = "준비 완료 — solution.py를 불러왔습니다.";
+    document.querySelectorAll("button").forEach(b => b.disabled = false);
+  } catch (e) {
+    status.textContent = "불러오기 실패: " + e;
+  }
+}
+
+function call(op, form) {
+  const data = Object.fromEntries(new FormData(form).entries());
+  return JSON.parse(api(op, JSON.stringify(data)));
+}
+
+function show(el, ok, detail) {
+  el.className = "result " + (ok ? "ok" : "bad");
+  el.innerHTML = (ok ? "✅ 성공" : "❌ 실패") + "<small></small>";
+  el.querySelector("small").textContent = detail;
+}
+
+document.getElementById("bookForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const f = e.target, d = Object.fromEntries(new FormData(f).entries());
+  let ok;
+  try { ok = call("book", f) === true; } catch (err) { ok = false; }
+  show(document.getElementById("bookResult"), ok,
+    `${d.name} · ${d.room} · ${d.day} · ${d.start}~${d.end}시 예약`);
+});
+
+document.getElementById("cancelForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const f = e.target, d = Object.fromEntries(new FormData(f).entries());
+  let ok;
+  try { ok = call("cancel", f) === true; } catch (err) { ok = false; }
+  show(document.getElementById("cancelResult"), ok,
+    `${d.name} 이름으로 ${d.room} · ${d.day} · ${d.start}시 예약 취소`);
+});
+
+document.getElementById("scheduleForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const f = e.target, d = Object.fromEntries(new FormData(f).entries());
+  const out = document.getElementById("scheduleOut");
+  let rows;
+  try { rows = call("schedule", f); } catch (err) { rows = []; }
+  out.innerHTML = "";
+  if (!rows.length) {
+    const p = document.createElement("p");
+    p.className = "empty";
+    p.textContent = `${d.room} · ${d.day}: 예약 없음`;
+    out.appendChild(p);
+    return;
+  }
+  const table = document.createElement("table");
+  table.innerHTML = "<thead><tr><th>시간</th><th>예약자</th></tr></thead><tbody></tbody>";
+  for (const [s, en, name] of rows) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = "<td></td><td></td>";
+    tr.children[0].textContent = `${s}:00 ~ ${en}:00`;
+    tr.children[1].textContent = name;
+    table.tBodies[0].appendChild(tr);
+  }
+  out.appendChild(table);
+});
+
+init();
+</script>
+</body>
+</html>
