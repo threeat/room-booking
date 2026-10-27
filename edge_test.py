@@ -62,6 +62,15 @@ t("다른 강의실 같은 시간", rb.book("A102", "월", 9, 12, "d"), True)
 t("다른 요일 같은 시간", rb.book("A101", "화", 9, 12, "d"), True)
 t("실패는 저장 안 함", rb.get_schedule("A101", "월"), [(9, 12, "a"), (12, 13, "c"), (18, 21, "b")])
 
+# 빈 이름
+rb = RoomBooking()
+t("빈 이름", rb.book("A101", "화", 10, 11, ""), False)
+t("띄어쓰기만 이름", rb.book("A101", "화", 10, 11, "   "), False)
+t("None 이름", rb.book("A101", "화", 10, 11, None), False)
+t("숫자 이름", rb.book("A101", "화", 10, 11, 123), False)
+t("빈 이름 실패는 저장 안 함", rb.get_schedule("A101", "화"), [])
+t("정상 이름은 가능", rb.book("A101", "화", 10, 11, "김"), True)
+
 # 하루 2건
 rb = RoomBooking()
 t("2건-1", rb.book("A101", "목", 9, 10, "홍"), True)

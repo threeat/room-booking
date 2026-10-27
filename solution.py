@@ -21,6 +21,11 @@ def _is_valid_place(room, day):
         return False
 
 
+def _is_valid_name(name):
+    # 빈 이름·띄어쓰기만 있는 이름·글자가 아닌 이름은 거절
+    return isinstance(name, str) and name.strip() != ""
+
+
 class RoomBooking:
     def __init__(self):
         # (room, day) -> [(start, end, name), ...]
@@ -28,6 +33,8 @@ class RoomBooking:
 
     def book(self, room, day, start, end, name):
         if not _is_valid_place(room, day):
+            return False
+        if not _is_valid_name(name):
             return False
         if not _is_int(start) or not _is_int(end):
             return False
